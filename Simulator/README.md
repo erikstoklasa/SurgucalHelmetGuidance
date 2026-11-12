@@ -32,3 +32,43 @@ TBD
 ### Mac
 
 TBD
+
+## Build the application
+
+### Linux
+
+Once at the beginning of the project:
+
+```sh
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+```
+
+after every change before running the simulator:
+
+```sh
+cmake --build build
+```
+
+#### Mac/Windows
+
+TBD
+
+## Further Info
+
+### Folder Structure
+
+#### src
+
+contains the main code of the programm
+
+#### core
+
+code used in more than one space can be put here
+
+#### scenarios
+
+different scenarios for the programm
+
+#### assets
+
+3d bodys, etc.

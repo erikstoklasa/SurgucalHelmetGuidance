@@ -56,6 +56,7 @@ target_link_libraries(imgui_library PUBLIC
 # Our application
 add_executable(surgicalhelmet-simulator
     src/main.cpp
+    core/scene.cpp
 )
 
 target_link_libraries(surgicalhelmet-simulator PRIVATE

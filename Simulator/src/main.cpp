@@ -1,5 +1,5 @@
-
 #include <cstdio>
+#include <string>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
@@ -8,6 +8,8 @@
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_opengl3.h"
 
+#include "../core/scene.hpp"
+
 int main()
 {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -15,16 +17,14 @@ int main()
         return 1;
     }
 
-    // Create an OpenGL 3.3 context
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
-                        SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 
     SDL_Window* window = SDL_CreateWindow(
-        "Drilling Simulator",
+        "Surgical Helmet Simulator",
         1280, 720,
         SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
     );
@@ -47,7 +47,6 @@ int main()
     SDL_GL_MakeCurrent(window, gl_context);
     SDL_GL_SetSwapInterval(1);
 
-    // Initialize Dear ImGui
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
@@ -60,9 +59,14 @@ int main()
     ImGui_ImplSDL3_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init("#version 330");
 
+    Scene scene;
+    scene.addBody("Head");
+    scene.addBody("Drill");
+    scene.addBody("Reference");
+    scene.addBody("Target");
+
+    uint32_t selectedBodyId = 0;
     bool running = true;
-    bool show_demo = true;
-    float target_angle = 0.0f;
 
     while (running) {
         SDL_Event event;
@@ -78,33 +82,35 @@ int main()
                 running = false;
         }
 
-        // Begin a new UI frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
 
-        ImGui::Begin("Simulation Controls");
+        ImGui::Begin("Scene Manager");
 
-        ImGui::Text("Drilling Alignment Simulator");
-        ImGui::Separator();
+        if (ImGui::Button("Add Body"))
+            selectedBodyId = scene.addBody("New Body");
 
-        ImGui::SliderFloat(
-            "Target angle",
-            &target_angle,
-            -90.0f, 90.0f,
-            "%.1f deg"
-        );
+        ImGui::SameLine();
 
-        ImGui::Text("Current target: %.1f deg", target_angle);
+        ImGui::BeginDisabled(selectedBodyId == 0);
 
-        ImGui::Checkbox("Show ImGui Demo", &show_demo);
+        if (ImGui::Button("Remove Selected")) {
+            if (scene.removeBody(selectedBodyId))
+                selectedBodyId = 0;
+        }
+
+        ImGui::EndDisabled();
+
+        for (const auto& body : scene.getBodies()) {
+            std::string label = body.name + "##" + std::to_string(body.id);
+
+            if (ImGui::Selectable(label.c_str(), selectedBodyId == body.id))
+                selectedBodyId = body.id;
+        }
 
         ImGui::End();
 
-        if (show_demo)
-            ImGui::ShowDemoWindow(&show_demo);
-
-        // Render the frame
         ImGui::Render();
 
         int width = 0;
@@ -119,7 +125,6 @@ int main()
         SDL_GL_SwapWindow(window);
     }
 
-    // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
