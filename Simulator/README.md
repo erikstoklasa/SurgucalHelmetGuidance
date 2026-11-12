@@ -22,7 +22,8 @@ sudo apt install -y \
   libx11-dev libxext-dev libxrandr-dev \
   libxcursor-dev libxi-dev libxfixes-dev \
   libxkbcommon-dev libwayland-dev \
-  libasound2-dev libpulse-dev
+  libasound2-dev libpulse-dev \
+  python3-jinja2
 ```
 
 ### Windows

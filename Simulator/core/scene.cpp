@@ -4,7 +4,15 @@
 uint32_t Scene::addBody(const std::string& name)
 {
     uint32_t id = nextId++;
-    bodies.push_back({id, name});
+
+    RigidBody body{id, name};
+    body.position = {
+        static_cast<float>((id - 1) % 5) * 0.7f - 1.4f,
+        0.25f,
+        static_cast<float>((id - 1) / 5) * 0.7f
+    };
+
+    bodies.push_back(body);
     return id;
 }
 

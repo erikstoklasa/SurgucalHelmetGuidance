@@ -32,6 +32,23 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(imgui)
 
+
+FetchContent_Declare(
+    glad
+    GIT_REPOSITORY https://github.com/Dav1dde/glad.git
+    GIT_TAG 658f48e72aee3c6582e80b05ac0f8787a64fe6bb
+    SOURCE_SUBDIR cmake
+)
+FetchContent_MakeAvailable(glad)
+glad_add_library(glad_gl_core_33 STATIC REPRODUCIBLE API gl:core=3.3)
+
+FetchContent_Declare(
+    glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG 0af55ccecd98d4e5a8d1fad7de25ba429d60e863
+)
+FetchContent_MakeAvailable(glm)
+
 # Build Dear ImGui as a static library
 add_library(imgui_library STATIC
     ${imgui_SOURCE_DIR}/imgui.cpp
@@ -57,10 +74,13 @@ target_link_libraries(imgui_library PUBLIC
 add_executable(surgicalhelmet-simulator
     src/main.cpp
     core/scene.cpp
+    src/viewport.cpp
 )
 
 target_link_libraries(surgicalhelmet-simulator PRIVATE
     imgui_library
+    glad_gl_core_33
+    glm::glm
 )
 
 # Put the SDL3 DLL beside the executable on Windows
