@@ -59,6 +59,49 @@
         canvas {
             touch-action: none;
         }
+
+        /* Audio phase strip */
+        .phase-seg {
+            border-top: 3px solid #334155;
+            padding: 4px 6px 2px;
+            border-radius: 2px;
+            color: #64748b;
+            transition: all 0.15s ease;
+        }
+
+        .phase-seg .phase-title {
+            display: block;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+
+        .phase-seg .phase-sub {
+            display: block;
+            font-size: 10px;
+        }
+
+        .phase-seg.is-active {
+            border-color: #38bdf8;
+            color: #7dd3fc;
+            background: rgba(56, 189, 248, 0.08);
+        }
+
+        .phase-seg.is-active[data-phase="aligned"] {
+            border-color: #10b981;
+            color: #6ee7b7;
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .phase-seg.is-active[data-phase="tracking_lost"] {
+            border-color: #f59e0b;
+            color: #fcd34d;
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        .audio-panel-flash {
+            box-shadow: 0 0 0 2px #38bdf8, 0 0 24px rgba(56, 189, 248, 0.35);
+        }
     </style>
 </head>
 
@@ -117,9 +160,9 @@
                     class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
                     <span>🔄</span> Rotate Surgeon +90°
                 </button>
-                <button id="btnAudioToggle"
+                <button id="btnAudioToggle" title="Jump to the auditory guidance mode picker"
                     class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1.5">
-                    <span id="audioIcon">🔇</span> <span id="audioLabel">Audio: OFF</span>
+                    <span id="audioIcon">🔇</span> <span id="audioLabel">Audio: Off</span>
                 </button>
             </div>
         </div>
@@ -282,6 +325,12 @@
             <div
                 class="relative w-full aspect-square max-h-[430px] mx-auto bg-slate-950 rounded-xl border border-slate-800 overflow-hidden shadow-inner">
                 <canvas id="tableCanvas" class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
+
+                <!-- Target Visibility Toggle -->
+                <button id="btnToggleTarget" type="button" aria-pressed="true"
+                    class="absolute top-2.5 right-2.5 bg-slate-900/85 backdrop-blur border border-slate-700 hover:border-emerald-400/60 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-emerald-300 transition-colors">
+                    👁 Hide Target
+                </button>
 
                 <!-- Floating Legend inside Table Canvas -->
                 <div
@@ -481,6 +530,112 @@
                 </div>
 
             </div>
+
+            <!-- C. Auditory Guidance Mode Picker -->
+            <div id="audioPanel"
+                class="bg-slate-950/70 border border-slate-800/90 rounded-xl p-3 space-y-2.5 transition-shadow duration-300">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <label class="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+                        <span>🔊</span> C. Auditory Guidance Mode
+                    </label>
+                    <span class="text-[10px] text-slate-500">Shortcuts:
+                        <kbd class="mono px-1 rounded bg-slate-800 text-slate-300">0</kbd> Off ·
+                        <kbd class="mono px-1 rounded bg-slate-800 text-slate-300">A</kbd>
+                        <kbd class="mono px-1 rounded bg-slate-800 text-slate-300">B</kbd>
+                        <kbd class="mono px-1 rounded bg-slate-800 text-slate-300">C</kbd> modes ·
+                        <kbd class="mono px-1 rounded bg-slate-800 text-slate-300">T</kbd> tracking lost</span>
+                </div>
+
+                <!-- Mode cards -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-1.5" id="audioModeGroup">
+                    <button data-audio="off"
+                        class="audio-btn active-pill px-3 py-2 rounded-lg text-xs font-semibold border border-slate-700 bg-slate-900 text-slate-300 transition text-left flex flex-col gap-1.5">
+                        <span class="flex items-center gap-2">
+                            <span class="w-5 h-5 rounded bg-slate-700 text-white text-[11px] font-bold flex items-center justify-center">–</span>
+                            Off
+                        </span>
+                        <svg class="w-full h-4 opacity-80" viewBox="0 0 80 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <line x1="2" y1="8" x2="78" y2="8" stroke-dasharray="2 4" />
+                        </svg>
+                        <span class="block text-[10px] font-normal opacity-80">LED guidance only</span>
+                    </button>
+                    <button data-audio="A_pulse"
+                        class="audio-btn px-3 py-2 rounded-lg text-xs font-semibold border border-slate-700 bg-slate-900 text-slate-300 transition text-left flex flex-col gap-1.5">
+                        <span class="flex items-center gap-2">
+                            <span class="w-5 h-5 rounded bg-sky-600 text-white text-[11px] font-bold flex items-center justify-center">A</span>
+                            Pulse Frequency
+                        </span>
+                        <svg class="w-full h-4 opacity-80" viewBox="0 0 80 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <line x1="3" y1="3" x2="3" y2="13" /><line x1="20" y1="3" x2="20" y2="13" />
+                            <line x1="34" y1="3" x2="34" y2="13" /><line x1="45" y1="3" x2="45" y2="13" />
+                            <line x1="54" y1="3" x2="54" y2="13" /><line x1="61" y1="3" x2="61" y2="13" />
+                            <line x1="67" y1="3" x2="67" y2="13" /><line x1="72" y1="3" x2="72" y2="13" />
+                            <line x1="76" y1="3" x2="76" y2="13" />
+                        </svg>
+                        <span class="block text-[10px] font-normal opacity-80">Faster pulses near target · mono</span>
+                    </button>
+                    <button data-audio="B_pulse_pitch"
+                        class="audio-btn px-3 py-2 rounded-lg text-xs font-semibold border border-slate-700 bg-slate-900 text-slate-300 transition text-left flex flex-col gap-1.5">
+                        <span class="flex items-center gap-2">
+                            <span class="w-5 h-5 rounded bg-sky-600 text-white text-[11px] font-bold flex items-center justify-center">B</span>
+                            Pulse + Pitch
+                        </span>
+                        <svg class="w-full h-4 opacity-80" viewBox="0 0 80 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                            <path d="M2 4 Q5 0 8 4 T14 4 T20 4 T26 4 T32 4 T38 4 T44 4 T50 4 T56 4 T62 4 T68 4 T74 4 T78 4" />
+                            <line x1="4" y1="10" x2="4" y2="15" /><line x1="22" y1="10" x2="22" y2="15" />
+                            <line x1="40" y1="10" x2="40" y2="15" /><line x1="58" y1="10" x2="58" y2="15" />
+                            <line x1="76" y1="10" x2="76" y2="15" />
+                        </svg>
+                        <span class="block text-[10px] font-normal opacity-80">L/R error → pitch · Up/Down error → rate</span>
+                    </button>
+                    <button data-audio="C_stereo"
+                        class="audio-btn px-3 py-2 rounded-lg text-xs font-semibold border border-slate-700 bg-slate-900 text-slate-300 transition text-left flex flex-col gap-1.5">
+                        <span class="flex items-center gap-2">
+                            <span class="w-5 h-5 rounded bg-sky-600 text-white text-[11px] font-bold flex items-center justify-center">C</span>
+                            Stereo Direction
+                        </span>
+                        <svg class="w-full h-4 opacity-80" viewBox="0 0 80 16" fill="currentColor">
+                            <text x="0" y="12" font-size="10" font-weight="700" font-family="Inter">L</text>
+                            <circle cx="18" cy="4" r="2.2" /><circle cx="34" cy="4" r="2.2" />
+                            <circle cx="50" cy="4" r="2.2" /><circle cx="66" cy="4" r="2.2" />
+                            <circle cx="26" cy="12" r="2.2" opacity="0.5" /><circle cx="42" cy="12" r="2.2" opacity="0.5" />
+                            <circle cx="58" cy="12" r="2.2" opacity="0.5" />
+                            <text x="73" y="12" font-size="10" font-weight="700" font-family="Inter">R</text>
+                        </svg>
+                        <span class="block text-[10px] font-normal opacity-80">🎧 Panned L/R + up/down timbre</span>
+                    </button>
+                </div>
+
+                <!-- Live guidance-behaviour phase strip (mirrors slide: Off target → Approaching → Aligned → Tracking lost) -->
+                <div class="grid grid-cols-4 gap-1.5" id="audioPhaseStrip">
+                    <div data-phase="off_target" class="phase-seg"><span class="phase-title">OFF TARGET</span><span class="phase-sub">Correction cue</span></div>
+                    <div data-phase="approaching" class="phase-seg"><span class="phase-title">APPROACHING</span><span class="phase-sub">Pulse accelerates</span></div>
+                    <div data-phase="aligned" class="phase-seg"><span class="phase-title">ALIGNED</span><span class="phase-sub">Confirm, then quiet</span></div>
+                    <div data-phase="tracking_lost" class="phase-seg"><span class="phase-title">TRACKING LOST</span><span class="phase-sub">Fault cue, guidance off</span></div>
+                </div>
+
+                <!-- Controls -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex-1 min-w-[220px] bg-slate-900/70 px-2.5 py-1.5 rounded-lg border border-slate-800/80 flex items-center gap-2.5">
+                        <span class="text-[11px] text-slate-300 font-medium whitespace-nowrap">Volume
+                            <strong id="lblAudioVolume" class="mono text-sky-400">25%</strong></span>
+                        <input id="sliderAudioVolume" type="range" min="0" max="1" step="0.05" value="0.25" class="w-full" />
+                    </div>
+                    <button id="btnAudioPreview" disabled
+                        class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-sky-300 border border-sky-500/40 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                        ▶ Preview sweep
+                    </button>
+                    <button id="btnTrackingLost" aria-pressed="false"
+                        class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-500/40 transition">
+                        ⚠ Simulate tracking lost
+                    </button>
+                </div>
+                <p class="text-[10px] text-slate-500">Keep volume low so speech and OR alarms stay audible.</p>
+
+                <div id="audioDescriptionBox"
+                    class="text-[11px] text-slate-300 bg-slate-900/80 border border-slate-800 rounded-lg p-2 leading-relaxed">
+                </div>
+            </div>
         </section>
 
     </main>
@@ -494,6 +649,7 @@
             eraserY: -6.0,
             targetX: 4.5,
             targetY: 5.5,
+            showTarget: true,  // When false, target is hidden on the table view (blind test mode)
 
             headYawDeg: 0,     // Head yaw around the table
             headRollDeg: 0,    // Neck roll tilt
@@ -526,8 +682,30 @@
             },
 
             draggingItem: null,
-            audioEnabled: false,
-            lastBeepTime: 0
+
+            // Auditory guidance
+            audioMode: 'off',                   // 'off' | 'A_pulse' | 'B_pulse_pitch' | 'C_stereo'
+            audioVolume: 0.25,                  // master gain (kept low to preserve OR soundscape)
+            audioPhase: 'off_target',           // 'off_target' | 'approaching' | 'aligned' | 'tracking_lost'
+            trackingLost: false,                // simulated loss of optical tracking
+            lastBeepTime: 0,
+            lastFaultTime: 0,
+            beatIndex: 0,                       // used by mode C to alternate L/R and up/down cues
+            previewStart: null                  // timestamp when a preview sweep started (null = live)
+        };
+
+        const AUDIO_MODE_LABELS = {
+            off: 'Off',
+            A_pulse: 'A · Pulse',
+            B_pulse_pitch: 'B · Pulse+Pitch',
+            C_stereo: 'C · Stereo'
+        };
+
+        const AUDIO_DESCRIPTIONS = {
+            off: '<strong>Off:</strong> No sonification — peripheral LEDs only. Use as the visual-only baseline.',
+            A_pulse: '<strong>A · Pulse Frequency:</strong> One fixed-pitch tick (660&nbsp;Hz, mono). The interval between ticks shrinks from ~700&nbsp;ms (far, &ge;18°) to ~90&nbsp;ms (near, 2°). Encodes <em>distance only</em> — lowest attention load, no direction.',
+            B_pulse_pitch: '<strong>B · Pulse + Pitch:</strong> Two independently encoded errors (mono). <em>Left/right error → pitch</em>: rises from 300&nbsp;Hz to 900&nbsp;Hz as that axis is corrected. <em>Up/down error → pulse rate</em>: speeds up from 600&nbsp;ms to 90&nbsp;ms as that axis is corrected. Move along one axis at a time to hear only one dimension change.',
+            C_stereo: '<strong>C · Stereo Direction (headphones):</strong> Cues alternate between a <em>left/right pulse panned toward the correction side</em> and an <em>up/down pulse</em> (bright high sine = up, soft low triangle = down). An axis that is already within 1° drops out of the rotation. Overall rate speeds up as total error shrinks. Follows the Pull/Push metaphor like the LEDs.'
         };
 
         // Consolidated description dictionary without duplicate declarations
@@ -736,7 +914,9 @@
                         err: Number(guidance.totalErrorDeg.toFixed(2)),
                         locked: guidance.isLocked,
                         layout: state.layoutMode,
-                        cue: state.cueMode
+                        cue: state.cueMode,
+                        audio: state.audioMode,
+                        trackingLost: state.trackingLost
                     });
                 }
             }
@@ -745,73 +925,195 @@
         /***************************************************************************
          * WEB AUDIO SYNTHESIZER
          ***************************************************************************/
+        // Signal path: guidance engine → per-mode synthesis → masterGain → compressor → output
         let audioCtx = null;
+        let masterGain = null;
+
+        const AUDIO_LOCK_DEG = 2.0;         // matches LED lock threshold
+        const AUDIO_UNLOCK_DEG = 2.5;       // hysteresis so the confirmation does not chatter at the boundary
+        const AUDIO_APPROACH_DEG = 10.0;    // off_target → approaching
+        const AUDIO_AXIS_DONE_DEG = 1.0;    // per-axis tolerance for modes B / C
+        const PREVIEW_DURATION_MS = 4200;
 
         function initAudio() {
             if (!audioCtx) {
                 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
                 audioCtx = new AudioContextClass();
+                masterGain = audioCtx.createGain();
+                masterGain.gain.value = state.audioVolume;
+                const comp = audioCtx.createDynamicsCompressor();
+                comp.threshold.value = -18;
+                comp.ratio.value = 6;
+                masterGain.connect(comp);
+                comp.connect(audioCtx.destination);
             }
             if (audioCtx.state === 'suspended') {
                 audioCtx.resume();
             }
         }
 
-        function updateAudioFeedback(timestamp, totalErrorDeg, steerX) {
-            if (!state.audioEnabled || !audioCtx) return;
+        function setAudioVolume(v) {
+            state.audioVolume = v;
+            if (masterGain) masterGain.gain.setTargetAtTime(v, audioCtx.currentTime, 0.02);
+        }
 
-            let intervalMs = 600;
-            if (totalErrorDeg <= 2.0) {
-                intervalMs = 1800;
-            } else {
-                const norm = Math.min(1, Math.max(0, (totalErrorDeg - 2.0) / 18.0));
-                intervalMs = 110 + norm * 540;
+        const clamp01 = v => Math.min(1, Math.max(0, v));
+        const normRange = (v, lo, hi) => clamp01((v - lo) / (hi - lo));
+
+        // One short enveloped tone — every cue is built from this.
+        function playTone({freq = 660, dur = 0.06, type = 'sine', pan = 0, gain = 0.5, when = 0, glideTo = null}) {
+            if (!audioCtx || !masterGain) return;
+            try {
+                const t = audioCtx.currentTime + when;
+                const osc = audioCtx.createOscillator();
+                const env = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, t);
+                if (glideTo) osc.frequency.exponentialRampToValueAtTime(glideTo, t + dur);
+                env.gain.setValueAtTime(0.0001, t);
+                env.gain.exponentialRampToValueAtTime(gain, t + 0.006);
+                env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+                let node = osc;
+                if (pan !== 0 && audioCtx.createStereoPanner) {
+                    const p = audioCtx.createStereoPanner();
+                    p.pan.setValueAtTime(Math.max(-1, Math.min(1, pan)), t);
+                    osc.connect(p);
+                    node = p;
+                }
+                node.connect(env);
+                env.connect(masterGain);
+                osc.start(t);
+                osc.stop(t + dur + 0.02);
+            } catch (e) { }
+        }
+
+        // Shared cues (identical across modes so state changes stay recognisable)
+        function playConfirmCue() {
+            playTone({freq: 880, dur: 0.09, type: 'sine', gain: 0.45});
+            playTone({freq: 1320, dur: 0.16, type: 'sine', gain: 0.45, when: 0.1});
+        }
+
+        function playFaultCue() {
+            playTone({freq: 392, dur: 0.14, type: 'square', gain: 0.22});
+            playTone({freq: 262, dur: 0.2, type: 'square', gain: 0.22, when: 0.17});
+        }
+
+        function classifyAudioPhase(g) {
+            if (state.trackingLost) return 'tracking_lost';
+            const lockDeg = state.audioPhase === 'aligned' ? AUDIO_UNLOCK_DEG : AUDIO_LOCK_DEG;
+            if (g.totalErrorDeg <= lockDeg) return 'aligned';
+            if (g.totalErrorDeg <= AUDIO_APPROACH_DEG) return 'approaching';
+            return 'off_target';
+        }
+
+        /*
+         * Mode implementations. Each receives guidance `g` and returns
+         * {intervalMs, play()} for the next pulse. Errors used:
+         *   g.visorX — head-centric left/right correction (sign = direction, incl. push/pull)
+         *   g.visorY — head-centric up/down correction
+         */
+        const AUDIO_MODES = {
+            // A: distance → pulse interval, fixed pitch, mono
+            A_pulse(g) {
+                const n = normRange(g.totalErrorDeg, AUDIO_LOCK_DEG, 18);
+                return {
+                    intervalMs: 90 + n * 610,
+                    play: () => playTone({freq: 660, dur: 0.05, type: 'sine', gain: 0.5})
+                };
+            },
+
+            // B: |X| → pitch (log 300→900 Hz), |Y| → pulse interval, mono
+            B_pulse_pitch(g) {
+                const nx = normRange(Math.abs(g.visorX), AUDIO_AXIS_DONE_DEG, 15);
+                const ny = normRange(Math.abs(g.visorY), AUDIO_AXIS_DONE_DEG, 15);
+                const freq = 900 * Math.pow(300 / 900, nx);
+                return {
+                    intervalMs: 90 + ny * 510,
+                    play: () => playTone({freq, dur: 0.06, type: 'triangle', gain: 0.55})
+                };
+            },
+
+            // C: alternate a panned L/R pulse and an up/down timbre pulse; skip axes already within tolerance
+            C_stereo(g) {
+                const ex = Math.abs(g.visorX);
+                const ey = Math.abs(g.visorY);
+                const cues = [];
+                if (ex > AUDIO_AXIS_DONE_DEG) {
+                    const pan = Math.sign(g.visorX) * (0.55 + 0.4 * normRange(ex, AUDIO_AXIS_DONE_DEG, 8));
+                    cues.push(() => playTone({freq: 600, dur: 0.06, type: 'triangle', pan, gain: 0.5}));
+                }
+                if (ey > AUDIO_AXIS_DONE_DEG) {
+                    cues.push(g.visorY > 0
+                        ? () => playTone({freq: 1050, dur: 0.05, type: 'sine', gain: 0.42})
+                        : () => playTone({freq: 330, dur: 0.08, type: 'triangle', gain: 0.6}));
+                }
+                const n = normRange(g.totalErrorDeg, AUDIO_LOCK_DEG, 18);
+                return {
+                    intervalMs: 110 + n * 450,
+                    play: () => {
+                        if (!cues.length) return;
+                        cues[state.beatIndex % cues.length]();
+                        state.beatIndex++;
+                    }
+                };
+            }
+        };
+
+        // Synthetic guidance for the preview sweep: diagonal approach from (12°, -9°) to the target
+        function previewGuidance(timestamp) {
+            const t = clamp01((timestamp - state.previewStart) / (PREVIEW_DURATION_MS - 900));
+            const k = 1 - t;
+            const visorX = 12 * k;
+            const visorY = -9 * k;
+            const totalErrorDeg = Math.hypot(visorX, visorY);
+            return {visorX, visorY, totalErrorDeg, isLocked: totalErrorDeg <= AUDIO_LOCK_DEG};
+        }
+
+        function updateAudioFeedback(timestamp, guidance) {
+            let g = guidance;
+            if (state.previewStart !== null) {
+                if (timestamp - state.previewStart > PREVIEW_DURATION_MS) {
+                    state.previewStart = null;
+                    syncAudioPreviewButton();
+                } else {
+                    g = previewGuidance(timestamp);
+                }
             }
 
+            const prevPhase = state.audioPhase;
+            const phase = classifyAudioPhase(g);
+            if (phase !== prevPhase) {
+                state.audioPhase = phase;
+                renderAudioPhaseStrip();
+            }
+
+            if (state.audioMode === 'off' || !audioCtx) return;
+
+            if (phase === 'tracking_lost') {
+                if (prevPhase !== 'tracking_lost' || timestamp - state.lastFaultTime >= 1500) {
+                    state.lastFaultTime = timestamp;
+                    playFaultCue();
+                }
+                return;
+            }
+
+            if (phase === 'aligned') {
+                if (prevPhase !== 'aligned') playConfirmCue();
+                return; // quiet while holding alignment
+            }
+
+            const {intervalMs, play} = AUDIO_MODES[state.audioMode](g);
             if (timestamp - state.lastBeepTime >= intervalMs) {
                 state.lastBeepTime = timestamp;
-                playGuidanceTone(totalErrorDeg, steerX);
+                play();
             }
         }
 
-        function playGuidanceTone(totalErrorDeg, steerX) {
-            try {
-                const now = audioCtx.currentTime;
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-
-                let panner = null;
-                if (audioCtx.createStereoPanner) {
-                    panner = audioCtx.createStereoPanner();
-                    panner.pan.setValueAtTime(Math.max(-0.85, Math.min(0.85, steerX / 12)), now);
-                }
-
-                if (totalErrorDeg <= 2.0) {
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(880, now);
-                    gain.gain.setValueAtTime(0.06, now);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
-                    osc.start(now);
-                    osc.stop(now + 0.23);
-                } else {
-                    const norm = Math.min(1, Math.max(0, totalErrorDeg / 18.0));
-                    const freq = 680 - norm * 360;
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(freq, now);
-                    gain.gain.setValueAtTime(0.07, now);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.065);
-                    osc.start(now);
-                    osc.stop(now + 0.07);
-                }
-
-                if (panner) {
-                    osc.connect(panner);
-                    panner.connect(gain);
-                } else {
-                    osc.connect(gain);
-                }
-                gain.connect(audioCtx.destination);
-            } catch (e) { }
+        function renderAudioPhaseStrip() {
+            document.querySelectorAll('#audioPhaseStrip .phase-seg').forEach(seg => {
+                seg.classList.toggle('is-active', seg.dataset.phase === state.audioPhase);
+            });
         }
 
         /***************************************************************************
@@ -986,6 +1288,7 @@
             const ty = cy - state.targetY * degToPx;
             const lockRadiusPx = 2.0 * degToPx;
 
+            if (state.showTarget) {
             tableCtx.beginPath();
             tableCtx.moveTo(cx, cy);
             tableCtx.lineTo(tx, ty);
@@ -1010,6 +1313,7 @@
             tableCtx.font = '600 10px Inter';
             tableCtx.fillStyle = '#6ee7b7';
             tableCtx.fillText('TARGET ANGLE', tx, ty - lockRadiusPx - 6);
+            }
 
             // Pivot Tip
             tableCtx.fillStyle = '#f8fafc';
@@ -1024,7 +1328,7 @@
             const ex = cx + state.eraserX * degToPx;
             const ey = cy - state.eraserY * degToPx;
 
-            if (!guidance.isLocked) {
+            if (state.showTarget && !guidance.isLocked) {
                 tableCtx.beginPath();
                 tableCtx.moveTo(ex, ey);
                 tableCtx.lineTo(tx, ty);
@@ -1081,39 +1385,6 @@
             visorCtx.fillStyle = fieldGrad;
             visorCtx.fillRect(0, 0, w, h);
 
-            visorCtx.save();
-            visorCtx.translate(cx, cy);
-            visorCtx.rotate((-state.headRollDeg * Math.PI) / 180 * 0.25);
-
-            visorCtx.strokeStyle = 'rgba(51, 65, 85, 0.3)';
-            visorCtx.lineWidth = 1;
-            visorCtx.beginPath();
-            visorCtx.arc(0, 0, 52, 0, Math.PI * 2);
-            visorCtx.moveTo(-75, 0); visorCtx.lineTo(75, 0);
-            visorCtx.moveTo(0, -75); visorCtx.lineTo(0, 75);
-            visorCtx.stroke();
-
-            const toolVisualX = -guidance.truePullX * 4.2;
-            const toolVisualY = guidance.truePullY * 4.2;
-            visorCtx.beginPath();
-            visorCtx.moveTo(0, 0);
-            visorCtx.lineTo(toolVisualX, toolVisualY);
-            visorCtx.strokeStyle = guidance.isLocked ? '#10b981' : '#94a3b8';
-            visorCtx.lineWidth = 5;
-            visorCtx.lineCap = 'round';
-            visorCtx.stroke();
-
-            visorCtx.beginPath();
-            visorCtx.arc(toolVisualX, toolVisualY, 7, 0, Math.PI * 2);
-            visorCtx.fillStyle = guidance.isLocked ? '#10b981' : '#f43f5e';
-            visorCtx.fill();
-
-            visorCtx.fillStyle = 'rgba(148, 163, 184, 0.5)';
-            visorCtx.font = '500 11px Inter';
-            visorCtx.textAlign = 'center';
-            visorCtx.fillText('UNOBSTRUCTED CENTRAL SURGICAL VIEW', 0, 82);
-            visorCtx.restore();
-
             const padX = w * 0.08;
             const padY = h * 0.10;
             const frameW = w - padX * 2;
@@ -1167,6 +1438,11 @@
             state.pixelBuffers.bottom = Array.from({length: cfg.numBottom}, () => [0, 0, 0]);
             state.pixelBuffers.left = Array.from({length: cfg.numLeft}, () => [0, 0, 0]);
             state.pixelBuffers.right = Array.from({length: cfg.numRight}, () => [0, 0, 0]);
+
+            // Tracking lost → guidance off (all LEDs dark), consistent with the audio fault state
+            if (state.trackingLost) {
+                return;
+            }
 
             // If Option 3 (Dark on Target) and locked, turn all LEDs OFF
             if (state.cueMode === 'option_3_dark_on_target' && isLocked) {
@@ -1337,6 +1613,18 @@
 
         function updateTelemetryUI(guidance) {
             const {totalErrorDeg, isLocked, truePullX, truePullY} = guidance;
+
+            if (state.trackingLost) {
+                readoutTotalError.textContent = '--.-°';
+                readoutTotalError.className = 'text-base font-bold text-amber-400';
+                statusBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/50';
+                statusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span> TRACKING LOST — Guidance Off`;
+                visorCoachIcon.textContent = '⚠';
+                visorCoachIcon.className = 'text-amber-400 font-bold';
+                visorCoachText.innerHTML = `<strong class="text-amber-300">Tracking lost.</strong> Guidance paused — restore marker visibility.`;
+                return;
+            }
+
             readoutTotalError.textContent = `${totalErrorDeg.toFixed(1)}°`;
 
             if (isLocked) {
@@ -1398,7 +1686,7 @@
                 state.draggingItem = 'eraser';
             } else if (Math.hypot(x - sx, y - sy) < 28) {
                 state.draggingItem = 'surgeon';
-            } else if (Math.hypot(x - tx, y - ty) < 24) {
+            } else if (state.showTarget && Math.hypot(x - tx, y - ty) < 24) {
                 state.draggingItem = 'target';
             } else {
                 state.draggingItem = 'eraser';
@@ -1437,6 +1725,20 @@
         tableCanvas.addEventListener('touchstart', onTablePointerDown, {passive: false});
         window.addEventListener('touchmove', onTablePointerMove, {passive: false});
         window.addEventListener('touchend', onTablePointerUp);
+
+        // Target Visibility Toggle
+        const btnToggleTarget = document.getElementById('btnToggleTarget');
+        function syncTargetToggle() {
+            btnToggleTarget.setAttribute('aria-pressed', String(state.showTarget));
+            btnToggleTarget.innerHTML = state.showTarget ? '👁 Hide Target' : '🙈 Show Target';
+            btnToggleTarget.classList.toggle('text-emerald-300', state.showTarget);
+            btnToggleTarget.classList.toggle('text-slate-400', !state.showTarget);
+        }
+        btnToggleTarget.addEventListener('click', () => {
+            state.showTarget = !state.showTarget;
+            syncTargetToggle();
+        });
+        syncTargetToggle();
 
         // Controls Binding
         const sliderHeadYaw = document.getElementById('sliderHeadYaw');
@@ -1534,22 +1836,90 @@
             syncSlidersToState();
         });
 
+        // Auditory Guidance Mode Picker
+        const audioPanel = document.getElementById('audioPanel');
+        const btnAudioPreview = document.getElementById('btnAudioPreview');
+        const btnTrackingLost = document.getElementById('btnTrackingLost');
+
+        function setAudioMode(mode) {
+            if (!AUDIO_DESCRIPTIONS[mode]) return;
+            if (mode !== 'off') initAudio(); // called from a user gesture → unlocks the AudioContext
+            state.audioMode = mode;
+            state.lastBeepTime = 0;
+            state.beatIndex = 0;
+            if (mode === 'off') state.previewStart = null;
+
+            document.querySelectorAll('.audio-btn').forEach(b => {
+                b.classList.toggle('active-pill', b.dataset.audio === mode);
+            });
+            document.getElementById('audioDescriptionBox').innerHTML = AUDIO_DESCRIPTIONS[mode];
+
+            const headerBtn = document.getElementById('btnAudioToggle');
+            document.getElementById('audioIcon').textContent = mode === 'off' ? '🔇' : '🔊';
+            document.getElementById('audioLabel').textContent = `Audio: ${AUDIO_MODE_LABELS[mode]}`;
+            headerBtn.classList.toggle('active-pill', mode !== 'off');
+            syncAudioPreviewButton();
+        }
+
+        function syncAudioPreviewButton() {
+            btnAudioPreview.disabled = state.audioMode === 'off';
+            btnAudioPreview.textContent = state.previewStart !== null ? '■ Stop preview' : '▶ Preview sweep';
+        }
+
+        function setTrackingLost(lost) {
+            state.trackingLost = lost;
+            state.lastFaultTime = 0;
+            btnTrackingLost.setAttribute('aria-pressed', String(lost));
+            btnTrackingLost.classList.toggle('bg-amber-500/20', lost);
+            btnTrackingLost.classList.toggle('border-amber-400', lost);
+            btnTrackingLost.textContent = lost ? '⚠ Tracking lost (click to restore)' : '⚠ Simulate tracking lost';
+        }
+
+        document.querySelectorAll('.audio-btn').forEach(btn => {
+            btn.addEventListener('click', () => setAudioMode(btn.dataset.audio));
+        });
+
         document.getElementById('btnAudioToggle').addEventListener('click', () => {
+            audioPanel.scrollIntoView({behavior: 'smooth', block: 'center'});
+            audioPanel.classList.add('audio-panel-flash');
+            setTimeout(() => audioPanel.classList.remove('audio-panel-flash'), 1200);
+        });
+
+        document.getElementById('sliderAudioVolume').addEventListener('input', e => {
+            const v = parseFloat(e.target.value);
+            setAudioVolume(v);
+            document.getElementById('lblAudioVolume').textContent = `${Math.round(v * 100)}%`;
+        });
+
+        btnAudioPreview.addEventListener('click', () => {
+            if (state.audioMode === 'off') return;
             initAudio();
-            state.audioEnabled = !state.audioEnabled;
-            const btn = document.getElementById('btnAudioToggle');
-            const icon = document.getElementById('audioIcon');
-            const label = document.getElementById('audioLabel');
-            if (state.audioEnabled) {
-                icon.textContent = '🔊';
-                label.textContent = 'Audio: ON';
-                btn.classList.add('active-pill');
-            } else {
-                icon.textContent = '🔇';
-                label.textContent = 'Audio: OFF';
-                btn.classList.remove('active-pill');
+            state.previewStart = state.previewStart === null ? performance.now() : null;
+            state.lastBeepTime = 0;
+            syncAudioPreviewButton();
+        });
+
+        btnTrackingLost.addEventListener('click', () => {
+            if (state.audioMode !== 'off') initAudio();
+            setTrackingLost(!state.trackingLost);
+        });
+
+        window.addEventListener('keydown', e => {
+            if (e.metaKey || e.ctrlKey || e.altKey) return;
+            const tag = (e.target.tagName || '').toLowerCase();
+            if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+            const keyMap = {'0': 'off', a: 'A_pulse', b: 'B_pulse_pitch', c: 'C_stereo'};
+            const k = e.key.toLowerCase();
+            if (keyMap[k]) {
+                setAudioMode(keyMap[k]);
+            } else if (k === 't') {
+                if (state.audioMode !== 'off') initAudio();
+                setTrackingLost(!state.trackingLost);
             }
         });
+
+        setAudioMode('off');
+        renderAudioPhaseStrip();
 
         // Hardware Controls Binding
         document.getElementById('btnConnectSerial').addEventListener('click', () => {
@@ -1617,7 +1987,7 @@
             drawTableCanvas(guidance, timestamp);
             drawVisorCanvas(guidance, timestamp);
             updateTelemetryUI(guidance);
-            updateAudioFeedback(timestamp, guidance.totalErrorDeg, guidance.truePullX);
+            updateAudioFeedback(timestamp, guidance);
             hardwareBridge.tick(timestamp, guidance);
             requestAnimationFrame(animate);
         }
