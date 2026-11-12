@@ -1,0 +1,10 @@
+
+# Build outputs and downloaded dependencies
+build/
+
+# Local editor configuration
+.vscode/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
