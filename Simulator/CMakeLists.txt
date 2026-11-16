@@ -83,6 +83,7 @@ target_link_libraries(surgicalhelmet-simulator PRIVATE
     glm::glm
 )
 
+
 # Put the SDL3 DLL beside the executable on Windows
 if(WIN32)
     add_custom_command(TARGET surgicalhelmet-simulator POST_BUILD
@@ -92,3 +93,22 @@ if(WIN32)
         VERBATIM
     )
 endif()
+
+# OptiTrack NatNet SDK
+set(NATNET_ROOT "$ENV{HOME}/optitrack/natnet")
+
+target_include_directories(surgicalhelmet-simulator PRIVATE
+    "${NATNET_ROOT}/include"
+)
+
+target_link_libraries(surgicalhelmet-simulator PRIVATE
+    "${NATNET_ROOT}/lib/libNatNet.so"
+)
+
+set_target_properties(surgicalhelmet-simulator PROPERTIES
+    BUILD_RPATH "${NATNET_ROOT}/lib"
+)
+
+target_sources(surgicalhelmet-simulator PRIVATE
+    sources/natnet_tracking.cpp
+)

@@ -10,6 +10,9 @@
 #include <vector>
 #include <cstddef>
 #include <cstdio>
+#include <cmath>
+
+#include "../core/movement_trails.hpp"
 
 namespace {
 struct Vertex {
@@ -117,8 +120,15 @@ bool Viewport::init()
     return true;
 }
 
-void Viewport::render(const Scene& scene, uint32_t selectedId,
-                      int w, int h)
+void Viewport::render(
+    const Scene& scene,
+    uint32_t selectedId,
+    int w,
+    int h,
+    AxisDisplayMode axisMode,
+    const MovementTrails& trails,
+    bool showTrails
+)
 {
     if (w <= 0 || h <= 0) return;
 
@@ -212,11 +222,63 @@ void Viewport::render(const Scene& scene, uint32_t selectedId,
             );
             line(vertices, a, b, color);
         }
+        bool showAxes =
+            axisMode == AxisDisplayMode::All ||
+            (axisMode == AxisDisplayMode::SelectedOnly &&
+            body.id == selectedId);
+
+        if (showAxes) {
+            float axisLength = 0.5f;
+
+            glm::vec3 x = glm::vec3(
+                model * glm::vec4(axisLength, 0, 0, 1)
+            );
+
+            glm::vec3 y = glm::vec3(
+                model * glm::vec4(0, axisLength, 0, 1)
+            );
+
+            glm::vec3 z = glm::vec3(
+                model * glm::vec4(0, 0, axisLength, 1)
+            );
+
+            line(vertices, p, x, {1.0f, 0.2f, 0.2f});
+            line(vertices, p, y, {0.2f, 1.0f, 0.2f});
+            line(vertices, p, z, {0.2f, 0.5f, 1.0f});
+        }
+        if (showTrails) {
+            const auto* trail = trails.get(body.id);
+
+            if (trail) {
+                glm::vec3 trailColor =
+                    body.id == selectedId
+                    ? glm::vec3(1.0f, 0.8f, 0.2f)
+                    : glm::vec3(0.3f, 0.7f, 1.0f);
+
+                for (size_t i = 1; i < trail->size(); ++i) {
+                    const Vec3& a = (*trail)[i - 1];
+                    const Vec3& b = (*trail)[i];
+
+                    line(
+                        vertices,
+                        {a.x, a.y, a.z},
+                        {b.x, b.y, b.z},
+                        trailColor
+                    );
+                }
+            }
+        }
     }
 
+    glm::vec3 cameraPosition = cameraTarget + glm::vec3(
+        distance * std::cos(pitch) * std::sin(yaw),
+        distance * std::sin(pitch),
+        distance * std::cos(pitch) * std::cos(yaw)
+    );
+
     glm::mat4 view = glm::lookAt(
-        glm::vec3(4, 4, 7),
-        glm::vec3(0, 0, 0),
+        cameraPosition,
+        cameraTarget,
         glm::vec3(0, 1, 0)
     );
 
@@ -264,4 +326,46 @@ void Viewport::shutdown()
     glDeleteVertexArrays(1, &vao);
     glDeleteBuffers(1, &vbo);
     glDeleteProgram(program);
+}
+
+
+void Viewport::orbit(float dx, float dy)
+{
+    yaw -= dx * 0.005f;
+    pitch += dy * 0.005f;
+
+    pitch = glm::clamp(pitch, -1.5f, 1.5f);
+}
+
+void Viewport::zoom(float amount)
+{
+    distance *= std::pow(0.9f, amount);
+    distance = glm::clamp(distance, 0.3f, 100.0f);
+}
+
+void Viewport::pan(float dx, float dy)
+{
+    glm::vec3 eye = cameraTarget + glm::vec3(
+        distance * std::cos(pitch) * std::sin(yaw),
+        distance * std::sin(pitch),
+        distance * std::cos(pitch) * std::cos(yaw)
+    );
+
+    glm::vec3 forward = glm::normalize(cameraTarget - eye);
+    glm::vec3 right = glm::normalize(
+        glm::cross(forward, glm::vec3(0, 1, 0))
+    );
+    glm::vec3 up = glm::normalize(glm::cross(right, forward));
+
+    float scale = distance * 0.002f;
+
+    cameraTarget += (-dx * right + dy * up) * scale;
+}
+
+void Viewport::resetCamera()
+{
+    yaw = 0.52f;
+    pitch = 0.46f;
+    distance = 9.0f;
+    cameraTarget = glm::vec3(0.0f);
 }
