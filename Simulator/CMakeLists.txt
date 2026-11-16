@@ -112,3 +112,13 @@ set_target_properties(surgicalhelmet-simulator PROPERTIES
 target_sources(surgicalhelmet-simulator PRIVATE
     sources/natnet_tracking.cpp
 )
+
+find_package(assimp REQUIRED)
+
+target_link_libraries(surgicalhelmet-simulator PRIVATE
+    assimp::assimp
+)
+
+target_compile_definitions(surgicalhelmet-simulator PRIVATE
+    SIM_MODEL_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets/models"
+)

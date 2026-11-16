@@ -3,9 +3,13 @@
 #include <cstdint>
 #include <glad/gl.h>
 #include <glm/vec3.hpp>
+#include <unordered_map>
+#include <array>
+#include <vector>
 
 class Scene;
 class MovementTrails;
+struct ScenarioReference;
 
 enum class AxisDisplayMode {
     All,
@@ -23,7 +27,9 @@ public:
         int height,
         AxisDisplayMode axisMode,
         const MovementTrails& trails,
-        bool showTrails
+        bool showTrails,
+        const std::unordered_map<uint32_t, int>& trackerRoles,
+        const ScenarioReference& reference
     );
     void shutdown();
     void orbit(float dx, float dy);
@@ -49,4 +55,11 @@ private:
     float distance = 9.0f;
 
     glm::vec3 cameraTarget{0.0f};
+
+    struct ModelVertex {
+        glm::vec3 position;
+        glm::vec3 color;
+    };
+
+    std::array<std::vector<ModelVertex>, 4> models;
 };

@@ -25,6 +25,7 @@
 #include "../core/movement_trails.hpp"
 #include "../core/tracking_diagnostics.hpp"
 #include "../sources/natnet_tracking.hpp"
+#include "../core/scenario_reference.hpp"
 
 int main()
 {
@@ -142,8 +143,7 @@ int main()
         "Unassigned",
         "Head",
         "Drill",
-        "Target",
-        "Reference"
+        "Target"
     };
 
     Viewport viewport;
@@ -167,6 +167,8 @@ int main()
 
     TrackingDiagnostics diagnostics;
 
+    ScenarioReference reference;
+    
     while (running) {
         SDL_Event event;
 
@@ -395,7 +397,9 @@ int main()
                 fbHeight,
                 static_cast<AxisDisplayMode>(axisMode),
                 trails,
-                showTrails
+                showTrails,
+                trackerRoles,
+                reference
             );
 
             ImGuiViewport* mainViewport = ImGui::GetMainViewport();
@@ -421,6 +425,32 @@ int main()
         ImGui::SetNextWindowBgAlpha(0.85f);
 
         ImGui::Begin("Scene Manager");
+
+        if (ImGui::Button("Load Sample Scenario")) {
+            trackerRoles.clear();
+
+            int role = 1;
+
+            for (const auto& body : scene.getBodies()) {
+                if (!body.visible)
+                    continue;
+
+                trackerRoles[body.id] = role;
+
+                if (role == 3) {
+                    break;
+                }
+
+                ++role;
+            }
+
+            reference.yawDeg = 0.0f;
+            reference.elevationDeg = 0.0f;
+            reference.visible = true;
+        }
+
+        ImGui::Separator();
+
 
         ImGui::BeginDisabled(sourceMode != 1);
 
@@ -522,6 +552,32 @@ int main()
                 }
             }
         }
+
+
+        ImGui::Separator();
+        ImGui::Text("Manual Reference");
+
+        ImGui::Checkbox("Show Reference", &reference.visible);
+
+        ImGui::SliderFloat(
+            "Yaw (deg)",
+            &reference.yawDeg,
+            -180.0f,
+            180.0f
+        );
+
+        ImGui::SliderFloat(
+            "Elevation (deg)",
+            &reference.elevationDeg,
+            -89.0f,
+            89.0f
+        );
+
+        if (ImGui::Button("Reset Reference Direction")) {
+            reference.yawDeg = 0.0f;
+            reference.elevationDeg = 0.0f;
+        }
+
 
 
         ImGui::Separator();

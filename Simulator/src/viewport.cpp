@@ -1,18 +1,22 @@
 
 #include "viewport.hpp"
 #include "../core/scene.hpp"
+#include "../core/scenario_reference.hpp"
+#include "../core/movement_trails.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
-
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 #include <vector>
 #include <cstddef>
 #include <cstdio>
 #include <cmath>
-
-#include "../core/movement_trails.hpp"
+#include <string>
+#include <cmath>
 
 namespace {
 struct Vertex {
@@ -117,6 +121,66 @@ bool Viewport::init()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
+    const char* modelFiles[] = {
+        "",
+        "head.glb",
+        "drill_pen.glb",
+        "target.glb"
+    };
+
+    for (int role = 1; role <= 3; ++role) {
+        std::string path =
+            std::string(SIM_MODEL_DIR) + "/" + modelFiles[role];
+
+        Assimp::Importer importer;
+
+        const aiScene* imported = importer.ReadFile(
+            path,
+            aiProcess_Triangulate |
+            aiProcess_PreTransformVertices
+        );
+
+        if (!imported) {
+            std::fprintf(stderr, "Model load failed: %s\n",
+                        path.c_str());
+            std::fprintf(stderr, "%s\n",
+                        importer.GetErrorString());
+            continue;
+        }
+
+        for (unsigned int m = 0; m < imported->mNumMeshes; ++m) {
+            const aiMesh* mesh = imported->mMeshes[m];
+
+            for (unsigned int f = 0; f < mesh->mNumFaces; ++f) {
+                const aiFace& face = mesh->mFaces[f];
+
+                if (face.mNumIndices != 3)
+                    continue;
+
+                for (unsigned int j = 0; j < 3; ++j) {
+                    unsigned int index = face.mIndices[j];
+
+                    const aiVector3D& p = mesh->mVertices[index];
+
+                    glm::vec3 color(0.75f);
+
+                    if (mesh->HasVertexColors(0)) {
+                        const aiColor4D& c = mesh->mColors[0][index];
+                        color = {c.r, c.g, c.b};
+                    }
+
+                    models[role].push_back({
+                        {p.x, p.y, p.z},
+                        color
+                    });
+                }
+            }
+        }
+
+        std::printf("Loaded %s: %zu vertices\n",
+                    modelFiles[role], models[role].size());
+    }
+
     return true;
 }
 
@@ -127,7 +191,9 @@ void Viewport::render(
     int h,
     AxisDisplayMode axisMode,
     const MovementTrails& trails,
-    bool showTrails
+    bool showTrails,
+    const std::unordered_map<uint32_t, int>& trackerRoles,
+    const ScenarioReference& reference
 )
 {
     if (w <= 0 || h <= 0) return;
@@ -164,6 +230,7 @@ void Viewport::render(
     }
 
     std::vector<Vertex> vertices;
+    std::vector<Vertex> modelTriangles;
 
     for (int i = -5; i <= 5; ++i) {
         float x = static_cast<float>(i);
@@ -213,15 +280,72 @@ void Viewport::render(
             ? glm::vec3(1.0f, 0.85f, 0.2f)
             : glm::vec3(0.3f, 0.7f, 1.0f);
 
-        for (const auto& edge : edges) {
-            glm::vec3 a = glm::vec3(
-                model * glm::vec4(corners[edge[0]], 1)
-            );
-            glm::vec3 b = glm::vec3(
-                model * glm::vec4(corners[edge[1]], 1)
-            );
-            line(vertices, a, b, color);
+
+        int role = 0;
+
+        if (auto it = trackerRoles.find(body.id);
+            it != trackerRoles.end()) {
+            role = it->second;
         }
+
+        if (role >= 1 && role <= 3 && !models[role].empty()) {
+            const auto& mesh = models[role];
+
+            for (size_t i = 0; i + 2 < mesh.size(); i += 3) {
+                glm::vec3 points[3];
+
+                for (int j = 0; j < 3; ++j) {
+                    points[j] = glm::vec3(
+                        model * glm::vec4(mesh[i + j].position, 1.0f)
+                    );
+                }
+
+                glm::vec3 normal = glm::cross(
+                    points[1] - points[0],
+                    points[2] - points[0]
+                );
+
+                float lighting = 0.65f;
+
+                if (glm::length(normal) > 1e-8f) {
+                    normal = glm::normalize(normal);
+
+                    lighting = 0.4f + 0.6f * std::abs(
+                        glm::dot(
+                            normal,
+                            glm::normalize(glm::vec3(0.5f, 1.0f, 0.7f))
+                        )
+                    );
+                }
+
+                for (int j = 0; j < 3; ++j) {
+                    glm::vec3 color =
+                        mesh[i + j].color * lighting;
+
+                    if (body.id == selectedId)
+                        color += glm::vec3(0.15f, 0.12f, 0.0f);
+
+                    color = glm::clamp(
+                        color, glm::vec3(0.0f), glm::vec3(1.0f)
+                    );
+
+                    modelTriangles.push_back({points[j], color});
+                }
+            }
+        } else {
+            for (const auto& edge : edges) {
+                glm::vec3 a = glm::vec3(
+                    model * glm::vec4(corners[edge[0]], 1)
+                );
+
+                glm::vec3 b = glm::vec3(
+                    model * glm::vec4(corners[edge[1]], 1)
+                );
+
+                line(vertices, a, b, color);
+            }
+        }
+
         bool showAxes =
             axisMode == AxisDisplayMode::All ||
             (axisMode == AxisDisplayMode::SelectedOnly &&
@@ -270,6 +394,84 @@ void Viewport::render(
         }
     }
 
+
+    
+    if (reference.visible) {
+        const RigidBody* target = nullptr;
+
+        for (const auto& body : scene.getBodies()) {
+            auto it = trackerRoles.find(body.id);
+
+            if (body.visible &&
+                it != trackerRoles.end() &&
+                it->second == 3) {
+                target = &body;
+                break;
+            }
+        }
+
+        if (target) {
+            glm::vec3 origin(
+                target->position.x,
+                target->position.y,
+                target->position.z
+            );
+
+            glm::quat q(
+                target->rotation.w,
+                target->rotation.x,
+                target->rotation.y,
+                target->rotation.z
+            );
+
+            if (glm::dot(q, q) < 1e-8f)
+                q = glm::quat(1, 0, 0, 0);
+
+            q = glm::normalize(q);
+
+            float yaw = glm::radians(reference.yawDeg);
+            float elevation = glm::radians(reference.elevationDeg);
+
+            glm::vec3 localDirection(
+                std::sin(yaw) * std::cos(elevation),
+                std::sin(elevation),
+                std::cos(yaw) * std::cos(elevation)
+            );
+
+            glm::vec3 direction = q * localDirection;
+
+            glm::vec3 tip = origin + direction * 0.8f;
+            glm::vec3 color(1.0f, 0.9f, 0.1f);
+
+            line(vertices, origin, tip, color);
+
+            glm::vec3 side = glm::cross(
+                direction, glm::vec3(0, 1, 0)
+            );
+
+            if (glm::length(side) < 0.001f)
+                side = q * glm::vec3(1, 0, 0);
+            else
+                side = glm::normalize(side);
+
+            line(
+                vertices,
+                tip,
+                tip - direction * 0.15f + side * 0.08f,
+                color
+            );
+
+            line(
+                vertices,
+                tip,
+                tip - direction * 0.15f - side * 0.08f,
+                color
+            );
+        }
+    }
+
+
+
     glm::vec3 cameraPosition = cameraTarget + glm::vec3(
         distance * std::cos(pitch) * std::sin(yaw),
         distance * std::sin(pitch),
@@ -312,6 +514,25 @@ void Viewport::render(
     );
 
     glDrawArrays(GL_LINES, 0, static_cast<GLsizei>(vertices.size()));
+
+    if (!modelTriangles.empty()) {
+        glBufferData(
+            GL_ARRAY_BUFFER,
+            modelTriangles.size() * sizeof(Vertex),
+            modelTriangles.data(),
+            GL_DYNAMIC_DRAW
+        );
+
+        glDrawArrays(
+            GL_TRIANGLES,
+            0,
+            static_cast<GLsizei>(modelTriangles.size())
+        );
+    }
+
+    glBindVertexArray(0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glDisable(GL_DEPTH_TEST);
 
     glBindVertexArray(0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
