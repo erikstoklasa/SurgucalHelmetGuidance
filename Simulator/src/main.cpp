@@ -13,6 +13,8 @@
 #include "../core/scene.hpp"
 #include "viewport.hpp"
 
+#include "../sources/mock_tracking.hpp"
+
 int main()
 {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -95,6 +97,9 @@ int main()
 
     bool running = true;
 
+    TrackingFrame latestFrame;
+
+
     while (running) {
         SDL_Event event;
 
@@ -107,6 +112,25 @@ int main()
             if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED &&
                 event.window.windowID == SDL_GetWindowID(window))
                 running = false;
+        }
+
+        std::vector<uint32_t> ids;
+
+        for (const auto& body : scene.getBodies())
+            ids.push_back(body.id);
+
+        latestFrame = makeMockFrame(
+            SDL_GetTicks() / 1000.0,
+            ids
+        );
+
+        for (const auto& tracked : latestFrame.rigidBodies) {
+            if (RigidBody* body = scene.findBody(tracked.id)) {
+                if (tracked.trackingValid) {
+                    body->position = tracked.position;
+                    body->rotation = tracked.rotation;
+                }
+            }
         }
 
         ImGui_ImplOpenGL3_NewFrame();
@@ -171,6 +195,12 @@ int main()
                 selectedBodyId = body.id;
             }
         }
+        ImGui::Separator();
+        ImGui::Text("Source: MOCK");
+        ImGui::Text("Frame: %u", latestFrame.frameNumber);
+        ImGui::Text("Time: %.3f s", latestFrame.timestampSeconds);
+        ImGui::Text("Tracked bodies: %zu",
+            latestFrame.rigidBodies.size());
 
         ImGui::End();
 
